@@ -12,23 +12,22 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - node-version: "16"
-            npm-version: '3'
+        node-version: ["16"]
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
 
-      - name: Install specific npm version
-        run: npm install -g npm@${{ matrix.npm-version }}
+    - run: npm install
+    - run: npm test
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
+    - name: Coveralls
+      if: success()
+      run: npm run coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
