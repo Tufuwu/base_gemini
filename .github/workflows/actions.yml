@@ -10,34 +10,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         python-version: ["3.8"]
 
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install tox tox-gh-actions codecov
-
+        pip install tox tox-gh-actions
+        
     - name: Test with tox
       run: tox
-
-    - name: Upload coverage to Codecov
-      run: |
-        VERSION="python_${{ matrix.python-version }}"
-        VERSION=${VERSION//[^[:alnum:]]/}
-        codecov --required --flags $VERSION || \
-        (sleep 5 && codecov --required --flags $VERSION) || \
-        (sleep 10 && codecov --required --flags $VERSION) || \
-        (sleep 20 && codecov --required --flags $VERSION) || \
-        (sleep 30 && codecov --required --flags $VERSION)
-      if: success()
-
