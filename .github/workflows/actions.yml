@@ -1,49 +1,26 @@
-name: CI
+name: Python Package
 
-on:
-  push:
-    branches: [ main, main ]
-  pull_request:
-    branches: [ main, main ]
+on: [push, pull_request]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - python: "3.8"
-            django: "2.2"
-          - python: "3.8"
-            django: "3.0"
-          - python: "3.8"
-            django: "3.1"
-          - python: "3.8"
-            django: "3.2"
-          - python: "3.8"
-            django: "4.0"
-
-    env:
-      DJANGO: ${{ matrix.django }}
+        python-version: ["3.8"]
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python }}
+      
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python }}
-
-      - name: Before Install
-        run: |
-          if [[ "${{ matrix.python }}" == "3.7" ]]; then pip install -U importlib_metadata; fi
-
+          python-version: ${{ matrix.python-version }}
+          
       - name: Install dependencies
         run: |
-          pip install tox tox-venv tox-gh-actions
-
-      - name: Run tox
-        run: tox
-        continue-on-error: ${{ matrix.django == 'master' }}
+          pip install flask nose mock
+          
+      - name: Run tests
+        run: python setup.py test
 
