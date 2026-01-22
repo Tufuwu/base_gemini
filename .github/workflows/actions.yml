@@ -9,19 +9,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         node-version: ["16"]
-        arch: [x64, ppc64le]
-    
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Use Node.js ${{ matrix.node-version }} on ${{ matrix.arch }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          architecture: ${{ matrix.arch }}
-          
-      - run: npm install
-      - run: npm test
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm install
+    - run: npm test
