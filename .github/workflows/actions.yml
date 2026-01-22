@@ -1,4 +1,4 @@
-name: Python Package CI
+name: Python CI
 
 on:
   push:
@@ -7,17 +7,13 @@ on:
     branches: [ main, main ]
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
+  build:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - python-version: "3.8"
-            os: ubuntu-latest
+        python-version: ["3.8"]
 
-    env:
-      TOXENV: py
 
     steps:
     - uses: actions/checkout@v4
@@ -26,33 +22,27 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools
-        pip install -U tox
-        tox --notest
-
-    - name: Run tox
-      run: tox
-
-  lint:
-    name: "check code style with flake8"
-    runs-on: ubuntu-latest
-    env:
-      TOXENV: lint
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v4
+    - name: Cache pip
+      uses: actions/checkout@v4
       with:
-        python-version: "3.8"
-        cache: 'pip'
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools
-        pip install -U tox
-    - name: Run lint
-      run: tox
+        python3 -m pip install -U coverage codecov mypy
+        python3 -m pip install -r requirements.txt
+
+    - name: Run tests and mypy
+      continue-on-error: ${{ matrix.experimental }}
+      run: |
+        python3 -m coverage run --branch -m unittest discover -t . -s ni/test/
+        python3 -m mypy ni/*.py
+
+    - name: Upload coverage to Codecov
+      if: success()
+      uses: codecov/codecov-action@v1
 
