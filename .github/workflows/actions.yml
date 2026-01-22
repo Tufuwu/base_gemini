@@ -1,6 +1,10 @@
-name: Python Package using Conda
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -12,22 +16,24 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
-        auto-update-conda: true
         python-version: ${{ matrix.python-version }}
-        channels: conda-forge,defaults
 
     - name: Install dependencies
       run: |
-        conda install --yes numpy scipy pyyaml matplotlib nose jupyter pandas
-        conda info -a
-        pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python setup.py develop
+        python -m pip install --upgrade pip
+        pip install .[dev]
+        pip install coverage coveralls
 
     - name: Run tests
       run: |
-        nosetests
+        pytest tests/regression_test.py
+        pytest -Werror --cov-branch --cov=mf2 tests/property_test.py tests/multi_fidelity_function_test.py
+
+    - name: Upload Coverage to Coveralls
+      run: coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
