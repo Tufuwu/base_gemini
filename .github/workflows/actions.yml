@@ -7,26 +7,40 @@ on:
     branches: [ main ]
 
 jobs:
-  inspector-view:
-    name: Inspector View
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "16"
-          cache: 'yarn'
-      - run: yarn install
-      - run: yarn build:inspectorView
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8"]
+        numpy-version: [stable]
+        astropy-version: [stable]
 
-  edit-mode:
-    name: Edit Mode
-    runs-on: ubuntu-latest
+    env:
+      NUMPY_VERSION: ${{ matrix.numpy-version }}
+      ASTROPY_VERSION: ${{ matrix.astropy-version }}
+      SETUP_CMD: 'test'
+      PIP_DEPENDENCIES: ''
+      CONDA_DEPENDENCIES: 'scipy pytest-cov'
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
-          node-version: "16"
-          cache: 'yarn'
-      - run: yarn install
-      - run: yarn build:editMode
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install ci-helpers
+        run: |
+          git clone git://github.com/astropy/ci-helpers.git
+          # Note: ci-helpers setup_conda usually handles environment creation
+          source ci-helpers/travis/setup_conda_linux.sh
+
+      - name: Run tests
+        run: |
+          # Ensure the conda environment is activated if using ci-helpers
+          export PATH=$HOME/miniconda/bin:$PATH
+          source activate test
+          py.test
