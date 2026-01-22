@@ -1,4 +1,4 @@
-name: Python CI
+name: CI
 
 on: [push, pull_request]
 
@@ -6,24 +6,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.8"]
 
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
+        
+    - name: Run Tests and Examples
+      continue-on-error: ${{ matrix.python-version == 2.7 }}
       run: |
-        pip install -r requirements-dev.txt
-
-    - name: Run script
-      run: |
-        python -c 'import bambam'
-        flake8 *.py
-        autopep8 -d *.py | awk 'BEGIN{had_data=0}{print;had_data=1}END{exit had_data}'
+        # Tests
+        python test_PDDL.py
+        python test_planner.py
+        # Examples
+        python action.py
+        python PDDL.py    examples/dinner/dinner.pddl examples/dinner/pb1.pddl
+        python planner.py examples/dinner/dinner.pddl examples/dinner/pb1.pddl
+        python planner.py examples/airport/airport.pddl examples/airport/pb1.pddl
 
