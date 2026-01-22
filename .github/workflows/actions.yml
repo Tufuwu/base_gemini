@@ -1,28 +1,85 @@
-name: Python Package
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - python-version: "3.8"
+        python-version: ["3.8"]
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      postgres:
+        image: postgres:10
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          
-      - name: Install dependencies
+          cache: 'pip'
+
+      - name: Install MongoDB 4.2
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          
-      - name: Run tests
-        run: python setup.py test
+          wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.1.tgz
+          tar zxf mongodb-linux-x86_64-ubuntu1604-4.2.1.tgz
+          echo "${PWD}/mongodb-linux-x86_64-ubuntu1604-4.2.1/bin" >> $GITHUB_PATH
+          mkdir -p data/db
+
+      - name: Start MongoDB and Create Databases
+        run: |
+          mongod --dbpath=data/db --fork --logpath /dev/null
+          sleep 5
+          mongo vakt_db --eval 'db.createUser({user:"test_user",pwd:"test_password",roles:["readWrite"]});'
+          mysql -h 127.0.0.1 -u root -e 'CREATE DATABASE vakt_db CHARACTER SET utf8 COLLATE utf8_bin;'
+          psql -h localhost -U postgres -c "CREATE DATABASE vakt_db ENCODING='UTF8';"
+
+      - name: Install dependencies
+        run: make deps
+
+      - name: Run tests and coverage
+        env:
+          DATABASE_DSN: "mysql+pymysql://root@127.0.0.1/vakt_db"
+        run: make coverage
+
+      - name: Test SQL integration (SQLite)
+        env:
+          DATABASE_DSN: "sqlite:///:memory:"
+        run: make test-sql-i
+
+      - name: Test SQL integration (Postgres)
+        env:
+          DATABASE_DSN: "postgresql+psycopg2cffi://postgres:@localhost/vakt_db"
+        run: make test-sql-i
+
+      - name: Run performance tests
+        run: make bench
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
 
