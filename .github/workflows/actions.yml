@@ -1,10 +1,6 @@
 name: CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -12,9 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8"]
-
-    env:
-      functional_test: "true"
+        django-version: [3.2, 4.2]
 
     steps:
       - uses: actions/checkout@v4
@@ -26,14 +20,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qq bats zsh
-          pip install .
-          pip install pytest
+          python -m pip install --upgrade pip
+          pip install -q Django==${{ matrix.django-version }}
+          pip install -e .[flake8,tests]
 
-      - name: Run shell tests
-        run: bats tests/shell
+      - name: Run flake8
+        run: flake8
 
-      - name: Run python tests
+      - name: Run tests
         run: pytest
 
