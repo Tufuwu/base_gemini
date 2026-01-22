@@ -1,25 +1,16 @@
-name: Python CI
+name: Python Package
 
 on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8"]
-      fail-fast: false
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
-
+          python-version: "3.8"
       - name: Run tests
-        run: |
-          ./setconf.py --test
-          cd testcases && ./test.sh
+        run: python setup.py test
 
