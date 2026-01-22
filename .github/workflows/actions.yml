@@ -2,55 +2,39 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-    tags: [ '*' ]
+    branches: [ main, main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8"]
+        include:
+          - python: "3.8"
+            tox_env: py38
+          - python: "3.8"
+            tox_env: lint
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+          cache: 'pip'
 
-    - name: Install dependencies
-      run: |
-        sed '/pypandoc/d' -i requirements.txt
-        pip install -U -r requirements.txt
-        python setup.py install
-        pip install pytest-cov pycodestyle
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U -r requirements-dev.txt
+          pip install .
 
-    - name: Run tests
-      run: |
-        py.test --cov=ssh_ldap_pubkey --cov-report term -vv
-        pycodestyle
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-    - name: Install build tools
-      run: pip install setuptools wheel twine
-    - name: Build and publish
-      env:
-        TWINE_USERNAME: jirutka
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+      - name: Run tests
+        run: |
+          pip install tox pytest-dead-fixtures
+          tox -e ${{ matrix.tox_env }}
+          pytest --dead-fixtures
 
